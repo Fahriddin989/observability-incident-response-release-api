@@ -1,0 +1,63 @@
+grafana:
+  enabled: true
+
+  service:
+    type: ClusterIP
+
+  adminPassword: "admin"
+
+  defaultDashboardsEnabled: true
+
+prometheus:
+  enabled: true
+
+  service:
+    type: ClusterIP
+
+  prometheusSpec:
+    retention: 6h
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+alertmanager:
+  enabled: true
+
+  service:
+    type: ClusterIP
+
+  alertmanagerSpec:
+    retention: 6h
+
+kubeStateMetrics:
+  enabled: true
+
+nodeExporter:
+  enabled: true
+
+prometheusOperator:
+  enabled: true
+
+kubeApiServer:
+  enabled: true
+
+kubelet:
+  enabled: true
+
+coreDns:
+  enabled: true
+
+kubeProxy:
+  enabled: true
+
+kubeEtcd:
+  enabled: false
+
+kubeControllerManager:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
