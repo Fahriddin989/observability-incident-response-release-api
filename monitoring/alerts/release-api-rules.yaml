@@ -1,0 +1,99 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: release-api-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: release-api-alerts
+    app.kubernetes.io/part-of: observability-incident-response-release-api
+    release: monitoring
+spec:
+  groups:
+    - name: release-api.rules
+      rules:
+        - alert: ReleaseApiDown
+          expr: |
+            kube_deployment_status_replicas_available{namespace="release-api-dev", deployment="release-api"} == 0
+          for: 1m
+          labels:
+            severity: critical
+            service: release-api
+          annotations:
+            summary: "release-api has no available replicas"
+            description: "The release-api Deployment has zero available replicas in namespace release-api-dev."
+            runbook_url: "runbooks/app-down.md"
+
+        - alert: ReleaseApiDeploymentNotAvailable
+          expr: |
+            kube_deployment_status_replicas_available{namespace="release-api-dev", deployment="release-api"}
+            <
+            kube_deployment_spec_replicas{namespace="release-api-dev", deployment="release-api"}
+          for: 2m
+          labels:
+            severity: warning
+            service: release-api
+          annotations:
+            summary: "release-api Deployment is not fully available"
+            description: "Available replicas are lower than desired replicas for release-api."
+            runbook_url: "runbooks/readiness-failure.md"
+
+        - alert: ReleaseApiHighRestarts
+          expr: |
+            sum by (pod) (
+              increase(kube_pod_container_status_restarts_total{
+                namespace="release-api-dev",
+                container="release-api"
+              }[10m])
+            ) > 0
+          for: 1m
+          labels:
+            severity: warning
+            service: release-api
+          annotations:
+            summary: "release-api pod restarted recently"
+            description: "Pod {{ $labels.pod }} restarted within the last 10 minutes."
+            runbook_url: "runbooks/high-restarts.md"
+
+        - alert: ReleaseApiHighErrorRate
+          expr: |
+            (
+              sum(rate(release_api_http_requests_total{
+                namespace="release-api-dev",
+                status=~"5.."
+              }[5m]))
+              /
+              sum(rate(release_api_http_requests_total{
+                namespace="release-api-dev"
+              }[5m]))
+            ) > 0.05
+            and
+            sum(rate(release_api_http_requests_total{
+              namespace="release-api-dev"
+            }[5m])) > 0
+          for: 2m
+          labels:
+            severity: critical
+            service: release-api
+          annotations:
+            summary: "release-api high HTTP 5xx error rate"
+            description: "More than 5% of release-api requests are returning 5xx responses."
+            runbook_url: "runbooks/app-down.md"
+
+        - alert: ReleaseApiHighLatency
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum by (le) (
+                rate(release_api_http_request_duration_seconds_bucket{
+                  namespace="release-api-dev"
+                }[5m])
+              )
+            ) > 0.5
+          for: 2m
+          labels:
+            severity: warning
+            service: release-api
+          annotations:
+            summary: "release-api high p95 latency"
+            description: "release-api p95 latency is above 500ms."
+            runbook_url: "runbooks/app-down.md"
