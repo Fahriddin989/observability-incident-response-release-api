@@ -124,3 +124,18 @@ spec:
             summary: "release-api high p95 latency"
             description: "release-api p95 latency is above 500ms."
             runbook_url: "runbooks/app-down.md"
+
+        - alert: ReleaseApiServiceNoEndpoints
+          expr: |
+            kube_endpoint_address_available{
+              namespace="release-api-dev",
+              endpoint="release-api"
+            } == 0
+          for: 1m
+          labels:
+            severity: critical
+            service: release-api
+          annotations:
+            summary: "release-api Service has no available endpoints"
+            description: "The release-api Service has zero available endpoints. Pods may be running, but Service traffic cannot reach them."
+            runbook_url: "runbooks/app-down.md"
