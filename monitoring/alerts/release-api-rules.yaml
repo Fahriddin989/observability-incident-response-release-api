@@ -13,7 +13,10 @@ spec:
       rules:
         - alert: ReleaseApiDown
           expr: |
-            kube_deployment_status_replicas_available{namespace="release-api-dev", deployment="release-api"} == 0
+            kube_deployment_status_replicas_available{
+              namespace="release-api-dev",
+              deployment="release-api"
+            } == 0
           for: 1m
           labels:
             severity: critical
@@ -25,9 +28,15 @@ spec:
 
         - alert: ReleaseApiDeploymentNotAvailable
           expr: |
-            kube_deployment_status_replicas_available{namespace="release-api-dev", deployment="release-api"}
+            kube_deployment_status_replicas_available{
+              namespace="release-api-dev",
+              deployment="release-api"
+            }
             <
-            kube_deployment_spec_replicas{namespace="release-api-dev", deployment="release-api"}
+            kube_deployment_spec_replicas{
+              namespace="release-api-dev",
+              deployment="release-api"
+            }
           for: 2m
           labels:
             severity: warning
@@ -36,6 +45,24 @@ spec:
             summary: "release-api Deployment is not fully available"
             description: "Available replicas are lower than desired replicas for release-api."
             runbook_url: "runbooks/readiness-failure.md"
+
+        - alert: ReleaseApiImagePullFailure
+          expr: |
+            max by (pod, reason) (
+              kube_pod_container_status_waiting_reason{
+                namespace="release-api-dev",
+                container="release-api",
+                reason=~"ImagePullBackOff|ErrImagePull"
+              }
+            ) == 1
+          for: 1m
+          labels:
+            severity: critical
+            service: release-api
+          annotations:
+            summary: "release-api image pull failure"
+            description: "Pod {{ $labels.pod }} is failing to pull its container image: {{ $labels.reason }}."
+            runbook_url: "runbooks/image-pull-failure.md"
 
         - alert: ReleaseApiHighRestarts
           expr: |
